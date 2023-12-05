@@ -6,17 +6,12 @@ in misery ;)
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <algorithm>
 
-// namespace my {
-// template<typename...  T>
-// void print(const std::string_view format, T... args) {
-//     std::cout << std::format(format, args...);
-// }
-// }
 using Nums = std::vector<std::uint32_t>; 
 
 struct Data {
@@ -37,6 +32,10 @@ Nums toVector(std::string_view numbers) {
             continue;
         }
         if (p == numbers.npos) {
+            if (s < numbers.size()) {
+                std::string num{numbers.substr(s)};
+                n.emplace_back(std::stoi(num));
+            }
             break;
         }
         std::string num{numbers.substr(s, p-s)}; //yes I know :)
@@ -48,42 +47,31 @@ Nums toVector(std::string_view numbers) {
 
 Data getData(std::string_view line) {
     auto [winning, yours] = splitLine(line);
-    // std::cout << winning << " x " << yours << "\n";
     return Data{toVector(winning), toVector(yours)};
 }
 
 std::uint32_t compare(const Nums& a, const Nums& b) {
-    auto m{0};
-    auto i{0};
-    //TODO find the bug
-    for (auto& el : a) {
-        if (el == b[i]) {
-            m++;
-            i++;
-        } else if (el < b[i]) {
-            continue;
-        } else {
-            while(b[i] < el) {++i;};
-        }
-    }
-    return m;
+    Nums out;
+    std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(out));
+    return out.size();
 }
 
 int main() {
     std::ifstream file{"input.txt"};
 
     std::uint64_t sum{0};
+    auto lineno{0};
     for(std::string line; std::getline(file, line);) {
-        // std::cout << line << "\n";
+        std::cout << "#" << lineno++ << " ";
         auto data = getData(line);
         std::sort(std::begin(data.winning), std::end(data.winning));
         std::sort(std::begin(data.yours), std::end(data.yours));
         auto m = compare(data.winning, data.yours);
         if (m > 0) {
-            sum += (1<<m);
-            std::cout << m << " " << (1<<m) << "\n";
+            sum += (1<<(m-1));
+            std::cout << m << " " << (1<<(m-1));
         }
+        std::cout << "\n";
     }
     std::cout << sum << "\n";
 }
-// 384 too low
