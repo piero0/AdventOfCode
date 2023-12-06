@@ -30,9 +30,15 @@ struct Range {
 struct Mapping {
     std::vector<Range> ranges;
 
-    void sort() {
+    void sortBySrc() {
         std::sort(ranges.begin(), ranges.end(), [](const auto& a, const auto& b) {
             return a.src < b.src;
+        });
+    }
+
+    void sortByDest() {
+        std::sort(ranges.begin(), ranges.end(), [](const auto& a, const auto& b) {
+            return a.dest < b.dest;
         });
     }
 
@@ -116,10 +122,10 @@ int main() {
 
     for(auto& el: maps) {
         std::cout << "\n";
-        el.sort();
-        el.show();
-        el.checkGaps();
+        el.sortBySrc();
     }
+
+    maps[maps.size()-1].sortByDest();
 
     u64 minLoc{std::numeric_limits<u64>::max()};
 
@@ -137,3 +143,10 @@ int main() {
 
     return 0;
 }
+
+/*
+1/ fill gaps (0-min, in the middle, max to int max)
+2/ map input range to output ranges (how?)
+3/ handle partial match (also how? :)
+4/ repeat and solved :)
+*/
