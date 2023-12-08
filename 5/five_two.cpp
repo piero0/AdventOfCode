@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <limits>
@@ -8,7 +9,8 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-#include <format>
+// #include <format>
+#include <fmt/core.h>
 
 using namespace std::string_literals;
 using u64 = std::uint64_t;
@@ -20,10 +22,14 @@ struct Range {
 
     std::optional<u64> inRange(u64 v) {
         if (v>=src && v<(src+len)) {
-            std::cout << std::format("match in {} {} {}\n", dest, src, len);
+            std::cout << fmt::format("match in {} {} {}\n", dest, src, len);
             return (v-src) + dest;
         }
         return std::nullopt;
+    }
+
+    void print() {
+        fmt::print("dst: {} src: {} len: {}\n", dest, src, len);
     }
 };
 
@@ -48,7 +54,7 @@ struct Mapping {
 
         for (auto& el : ranges) {
             if (last+1 != el.src && el.src !=  0) {
-                std::cout << std::format("gap {}-{}\n", last, el.src);
+                std::cout << fmt::format("gap {}-{}\n", last, el.src);
             }
             last = el.src + el.len - 1;
         }
@@ -57,7 +63,7 @@ struct Mapping {
     u64 map(u64 val) {
         for (auto& el : ranges) {
             if(auto res = el.inRange(val)) {
-                std::cout << std::format("ret {}\n", res.value());
+                std::cout << fmt::format("ret {}\n", res.value());
                 return res.value();
             }
         }
@@ -65,12 +71,73 @@ struct Mapping {
         return val;
     }
 
+    Mapping map(Range i) {
+        // załóżmy że mamy wszystkie range bez gapów
+        // potem się zobaczy czy trzeba uzupełnić czy da się bez
+        Mapping out;
+        for (auto& d : ranges) {
+            d.print();
+            /* d(estination)
+                src................src+len
+                       i.dest............i.dest+len  op1
+                     i.dest...len  op2
+                1................10  1,10
+                      3...............15 3,13
+                      3...5 3,3
+                
+            */
+            auto dEnd{d.src+d.len};
+            auto iEnd{i.src+i.len};
+
+            if (i.dest >= d.src && i.dest < dEnd) {
+                std::int64_t dt = std::abs(static_cast<std::int64_t>(i.dest - d.src));
+                auto newSrc = d.src + dt;
+                u64 newLen{0};
+
+                auto endDt = iEnd - dEnd;
+
+                if(endDt > 0) {
+                    newLen = dEnd - i.dest;
+                    i.len = endDt;
+                    i.dest = dEnd + 1;
+                } else {
+                    newLen = i.len;
+                    i.len = 0;
+                }
+
+                out.ranges.emplace_back(Range{0, newSrc, newLen});
+            }
+            if(i.len == 0) {
+                break;
+            }
+        }
+        return out;
+    }
+
     void show() {
         for (auto& el : ranges) {
-            std::cout << std::format("{} {} {}\n", el.dest, el.src, el.len);
+            std::cout << fmt::format("{} {} {}\n", el.dest, el.src, el.len);
         }
     }
 };
+
+void testMapping() {
+    std::vector<Range> rngs {{3, 0, 5}, {3, 0, 15}, {3, 0, 10}, {1, 0, 10}};
+    
+    Mapping m1;
+    m1.ranges.emplace_back(Range{5, 1, 10});
+
+    for(auto& r: rngs) {
+        fmt::print("input range {} {} {}\n", r.dest, r.src, r.len);
+        auto out = m1.map(r);
+        fmt::print("output map {}\n", out.ranges.size());
+        if (out.ranges.size() > 0) {
+            for(auto& el: out.ranges) {
+                el.print();
+            }
+        }
+    }
+}
 
 Vec text2vec(std::string_view line) {
     Vec out;
@@ -125,22 +192,18 @@ int main() {
         el.sortBySrc();
     }
 
-    maps[maps.size()-1].sortByDest();
+    // maps[maps.size()-1].sortByDest();
 
     u64 minLoc{std::numeric_limits<u64>::max()};
 
-    for(auto& seed: seeds) {
-        u64 last{seed};
-        std::cout << std::format("\nseed {}\n", last);
-        for(auto& el: maps) {
-            last = el.map(last);
-            std::cout << std::format("mapped {}\n", last);
-        }
-        minLoc = std::min(minLoc, last);
-    }
+    Range r{0, seeds[0], seeds[1]};
 
-    std::cout << std::format("\nminLoc {}\n", minLoc);
+    fmt::print("range {} {} {}\n", r.dest, r.src, r.len);
+    
 
+    std::cout << fmt::format("\nminLoc {}\n", minLoc);
+
+    testMapping();
     return 0;
 }
 
