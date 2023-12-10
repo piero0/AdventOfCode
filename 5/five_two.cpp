@@ -28,7 +28,7 @@ struct Range {
         return std::nullopt;
     }
 
-    void print() {
+    void print() const {
         fmt::print("dst: {} src: {} len: {}\n", dest, src, len);
     }
 };
@@ -49,14 +49,31 @@ struct Mapping {
     }
 
     // just out of curiosity
-    void checkGaps() {
+    std::vector<Range> checkGaps() {
         u64 last{0};
+
+        std::vector<Range> missing;
 
         for (auto& el : ranges) {
             if (last+1 != el.src && el.src !=  0) {
                 std::cout << fmt::format("gap {}-{}\n", last, el.src);
+                missing.emplace_back(Range{last, last, el.src-last});
             }
             last = el.src + el.len - 1;
+        }
+
+        return missing;
+    }
+
+    void fixLast() {
+        auto lastR = ranges[ranges.size()-1];
+        auto end = lastR.dest + lastR.len;
+        if (end < std::numeric_limits<std::uint64_t>::max()) {
+            auto max = std::numeric_limits<std::uint64_t>::max();
+            auto r = Range{end, end, 1000000000};
+            fmt::print("adding end ");
+            r.print();
+            ranges.emplace_back(r);
         }
     }
 
@@ -71,11 +88,26 @@ struct Mapping {
         return val;
     }
 
-    Mapping map(Range i) {
+    Mapping map(Range i) const {
         // załóżmy że mamy wszystkie range bez gapów
         // potem się zobaczy czy trzeba uzupełnić czy da się bez
+
+        /* input dest len
+            dest src len
+        */
+        fmt::print("input: ");
+        i.print();
         Mapping out;
+
+        //auto last = ranges[ranges.size()-1];
+        //if (i.dest >= last.dest+last.len) {
+        //    fmt::print("early out {}\n", i.dest);
+        //    out.ranges.emplace_back(Range({i.dest, i.dest, i.len}));
+        //    return out;
+        //}
+
         for (auto& d : ranges) {
+            fmt::print("dest: ");
             d.print();
             /* d(estination)
                 src................src+len
@@ -87,15 +119,16 @@ struct Mapping {
                 
             */
             auto dEnd{d.src+d.len};
-            auto iEnd{i.src+i.len};
+            auto iEnd{i.dest+i.len};
 
             if (i.dest >= d.src && i.dest < dEnd) {
                 std::int64_t dt = std::abs(static_cast<std::int64_t>(i.dest - d.src));
-                auto newSrc = d.src + dt;
+                auto newDest = (i.dest-d.src) + d.dest;
                 u64 newLen{0};
 
-                auto endDt = iEnd - dEnd;
+                auto endDt = static_cast<std::int64_t>(iEnd - dEnd);
 
+                // input end inside dest => endDt < 0
                 if(endDt > 0) {
                     newLen = dEnd - i.dest;
                     i.len = endDt;
@@ -104,8 +137,7 @@ struct Mapping {
                     newLen = i.len;
                     i.len = 0;
                 }
-
-                out.ranges.emplace_back(Range{0, newSrc, newLen});
+                out.ranges.emplace_back(Range{newDest, 0, newLen});
             }
             if(i.len == 0) {
                 break;
@@ -136,6 +168,7 @@ void testMapping() {
                 el.print();
             }
         }
+        fmt::print("\n");
     }
 }
 
@@ -156,6 +189,28 @@ Vec parseSeeds(std::string_view line) {
 
 Map parseSoils(std::string_view line) {
     return {};
+}
+
+std::uint64_t findLocation(const Mapping& in, const std::vector<Mapping>& maps, int i) {
+    fmt::print("i: {}\n", i);
+    std::uint64_t min{std::numeric_limits<u64>::max()};
+
+    if (i >= maps.size() ) {
+        fmt::print("Results: ");
+        for(auto& el: in.ranges) {
+            el.print();
+            min = std::min(min, el.dest);
+            fmt::print("{} ", el.dest);
+        }
+        fmt::print("\n new min: {}\n", min);
+        return min;
+    }
+    for (auto& r : in.ranges) {
+        auto newMap = maps[i].map(r);
+        min = std::min(min, findLocation(newMap, maps, i+1));
+    }
+    fmt::print("{} end\n", i);
+    return min;
 }
 
 int main() {
@@ -190,20 +245,32 @@ int main() {
     for(auto& el: maps) {
         std::cout << "\n";
         el.sortBySrc();
+        auto mis = el.checkGaps();
+        for (auto& e: mis) {
+            fmt::print("filling gap: ");
+            e.print();
+            el.ranges.push_back(e);
+        }
+        if (mis.size() > 0) {
+            el.sortBySrc();
+        }
+        el.fixLast();
     }
 
     // maps[maps.size()-1].sortByDest();
 
     u64 minLoc{std::numeric_limits<u64>::max()};
 
-    Range r{0, seeds[0], seeds[1]};
+    Mapping input;
+    for (int i=0; i<seeds.size(); i+=2) {
+        input.ranges.emplace_back(Range{seeds[i], 0, seeds[i+1]});
+    }
 
-    fmt::print("range {} {} {}\n", r.dest, r.src, r.len);
-    
+    minLoc = findLocation(input, maps, 0);
 
     std::cout << fmt::format("\nminLoc {}\n", minLoc);
 
-    testMapping();
+    // testMapping();
     return 0;
 }
 
