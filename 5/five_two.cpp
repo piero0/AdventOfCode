@@ -9,8 +9,8 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-// #include <format>
 #include <fmt/core.h>
+#include <fmt/ranges.h>
 
 using namespace std::string_literals;
 using u64 = std::uint64_t;
@@ -22,19 +22,23 @@ struct Range {
 
     std::optional<u64> inRange(u64 v) {
         if (v>=src && v<(src+len)) {
-            std::cout << fmt::format("match in {} {} {}\n", dest, src, len);
+            fmt::print("match in: {}\n", print());
             return (v-src) + dest;
         }
         return std::nullopt;
     }
 
-    void print() const {
-        fmt::print("dst: {} src: {} len: {}\n", dest, src, len);
+    std::string print() const {
+        return fmt::format("dst: {} src: {} len: {}", dest, src, len);
     }
 };
 
 struct Mapping {
     std::vector<Range> ranges;
+    const std::string name{};
+
+    Mapping(): name("noname") {}
+    Mapping(const std::string& name): name(name) {}
 
     void sortBySrc() {
         std::sort(ranges.begin(), ranges.end(), [](const auto& a, const auto& b) {
@@ -56,7 +60,7 @@ struct Mapping {
 
         for (auto& el : ranges) {
             if (last+1 != el.src && el.src !=  0) {
-                std::cout << fmt::format("gap {}-{}\n", last, el.src);
+                fmt::print("gap {}-{}\n", last, el.src);
                 missing.emplace_back(Range{last, last, el.src-last});
             }
             last = el.src + el.len - 1;
@@ -71,8 +75,7 @@ struct Mapping {
         if (end < std::numeric_limits<std::uint64_t>::max()) {
             auto max = std::numeric_limits<std::uint64_t>::max();
             auto r = Range{end, end, 1000000000};
-            fmt::print("adding end ");
-            r.print();
+            fmt::print("adding end {}\n", r.print());
             ranges.emplace_back(r);
         }
     }
@@ -80,11 +83,11 @@ struct Mapping {
     u64 map(u64 val) {
         for (auto& el : ranges) {
             if(auto res = el.inRange(val)) {
-                std::cout << fmt::format("ret {}\n", res.value());
+                fmt::print("ret {}\n", res.value());
                 return res.value();
             }
         }
-        std::cout << "no map 1:1\n";
+        fmt::print("no map 1:1\n");
         return val;
     }
 
@@ -95,9 +98,8 @@ struct Mapping {
         /* input dest len
             dest src len
         */
-        fmt::print("input: ");
-        i.print();
-        Mapping out;
+        fmt::print("input: {}\n", i.print());
+        Mapping out{name};
 
         //auto last = ranges[ranges.size()-1];
         //if (i.dest >= last.dest+last.len) {
@@ -107,8 +109,7 @@ struct Mapping {
         //}
 
         for (auto& d : ranges) {
-            fmt::print("dest: ");
-            d.print();
+            fmt::print("dest: {}\n", d.print());
             /* d(estination)
                 src................src+len
                        i.dest............i.dest+len  op1
@@ -118,10 +119,10 @@ struct Mapping {
                       3...5 3,3
                 
             */
-            auto dEnd{d.src+d.len};
-            auto iEnd{i.dest+i.len};
+            auto dEnd{d.src+d.len-1};
+            auto iEnd{i.dest+i.len-1};
 
-            if (i.dest >= d.src && i.dest < dEnd) {
+            if (i.dest >= d.src && i.dest <= dEnd) {
                 std::int64_t dt = std::abs(static_cast<std::int64_t>(i.dest - d.src));
                 auto newDest = (i.dest-d.src) + d.dest;
                 u64 newLen{0};
@@ -137,18 +138,24 @@ struct Mapping {
                     newLen = i.len;
                     i.len = 0;
                 }
-                out.ranges.emplace_back(Range{newDest, 0, newLen});
+                auto m = Range{newDest, 0, newLen};
+                fmt::print("match: {}\n", m.print());
+                out.ranges.emplace_back(m);
             }
             if(i.len == 0) {
+                fmt::print("range mapped fully\n");
                 break;
             }
+        }
+        if (i.len != 0) {
+            fmt::print("!leftover\n");
         }
         return out;
     }
 
     void show() {
         for (auto& el : ranges) {
-            std::cout << fmt::format("{} {} {}\n", el.dest, el.src, el.len);
+            fmt::print("{}\n", el.print());
         }
     }
 };
@@ -165,7 +172,7 @@ void testMapping() {
         fmt::print("output map {}\n", out.ranges.size());
         if (out.ranges.size() > 0) {
             for(auto& el: out.ranges) {
-                el.print();
+                fmt::print("{}\n", el.print());
             }
         }
         fmt::print("\n");
@@ -192,20 +199,20 @@ Map parseSoils(std::string_view line) {
 }
 
 std::uint64_t findLocation(const Mapping& in, const std::vector<Mapping>& maps, int i) {
-    fmt::print("i: {}\n", i);
+    fmt::print("i: {} len: {} name: {}\n", i, in.ranges.size(), maps[i].name);
     std::uint64_t min{std::numeric_limits<u64>::max()};
 
     if (i >= maps.size() ) {
-        fmt::print("Results: ");
+        fmt::print("Results: \n");
         for(auto& el: in.ranges) {
-            el.print();
+            fmt::print("{}\n", el.print());
             min = std::min(min, el.dest);
-            fmt::print("{} ", el.dest);
         }
         fmt::print("\n new min: {}\n", min);
         return min;
     }
     for (auto& r : in.ranges) {
+        fmt::print("> {}\n", r.print());
         auto newMap = maps[i].map(r);
         min = std::min(min, findLocation(newMap, maps, i+1));
     }
@@ -223,16 +230,13 @@ int main() {
     std::string line;
     std::getline(file, line);
     seeds = parseSeeds(line);
-    for (auto el : seeds) {
-        std::cout << el << " ";
-    }
-    std::cout << "\n";
+    fmt::print("seeds: {}\n", seeds);
 
     auto idx{-1};
     for(std::string line; std::getline(file, line);) {
         if (line.empty()) continue;
         if (line.ends_with(':')) {
-            maps.push_back({});
+            maps.push_back({line});
             idx++;
             continue;
         }
@@ -243,12 +247,10 @@ int main() {
     }
 
     for(auto& el: maps) {
-        std::cout << "\n";
         el.sortBySrc();
         auto mis = el.checkGaps();
         for (auto& e: mis) {
-            fmt::print("filling gap: ");
-            e.print();
+            fmt::print("filling gap: {}\n", e.print());
             el.ranges.push_back(e);
         }
         if (mis.size() > 0) {
@@ -268,7 +270,7 @@ int main() {
 
     minLoc = findLocation(input, maps, 0);
 
-    std::cout << fmt::format("\nminLoc {}\n", minLoc);
+    fmt::print("\nminLoc {}\n", minLoc);
 
     // testMapping();
     return 0;
