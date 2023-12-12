@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <fstream>
 #include <fmt/core.h>
+#include <fmt/ranges.h>
 #include <iterator>
 #include <string>
 #include <unordered_set>
@@ -64,29 +65,47 @@ int main() {
         moves.emplace_back((el == 'L') ? 0 : 1);
     }
 
-    //simul
-    auto idx{0};
-    auto end = sortedNames.size()-1;
-    auto steps{0L};
-    auto d = moves.begin();
+    //find starts and ends
+    std::vector<std::size_t> startIdx;
+    std::unordered_set<std::size_t> ends;
 
-    fmt::print("{} -{}-> ", sortedNames[idx], (*d == 0) ? 'L' : 'R');
-    while(true) {
-        idx = nodes[idx][*d];
-        d++;
-        fmt::print("{} -{}-> ", sortedNames[idx], (*d == 0) ? 'L' : 'R');
-        steps++;
-        if (idx == end) {
-            break;
-        }
-        if (d == moves.end()) {
-            d = moves.begin();
-            fmt::print(" !{}! ", *d);
+    auto it0 = sortedNames.begin();
+
+    for (auto it = sortedNames.begin(); it != sortedNames.end(); it++) {
+        auto lastChar = (*it)[2];
+        if (lastChar == 'A') {
+            fmt::print("A {}\n", *it);
+            startIdx.emplace_back(std::distance(it0, it));
+        } else if(lastChar == 'Z') {
+            fmt::print("Z {}\n", *it);
+            ends.insert(std::distance(it0, it));
         }
     }
 
-    fmt::print("\nsteps {}\n", steps);
+    //simul
+    auto steps{0L};
+    auto d = moves.begin();
+    std::vector<std::size_t> results;
+
+    for(auto it = startIdx.begin(); it != startIdx.end(); it++) {
+        while(true) {
+            *it = nodes[*it][*d];
+            d++;
+            steps++;
+            if (ends.contains(*it)) {
+                d = moves.begin();
+                results.emplace_back(steps);
+                steps = 0;
+                break;
+            }
+            if (d == moves.end()) {
+                d = moves.begin();
+            }
+        }
+    }
+
+    fmt::print("\nsteps {}\n", results);
+    //todo: of course c++ does not have a lcm
+    //for 2+ elements so you need to chain it yourself
     return 0;
 }
-//325 < low
-//11567 < low

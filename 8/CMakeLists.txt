@@ -7,3 +7,10 @@ project(${name})
 add_executable(${name} ${name}.cpp)
 set_property(TARGET ${name} PROPERTY CXX_STANDARD 20)
 target_link_libraries(${name} PRIVATE fmt::fmt)
+
+set(name "eight_two")
+
+project(${name})
+add_executable(${name} ${name}.cpp)
+set_property(TARGET ${name} PROPERTY CXX_STANDARD 20)
+target_link_libraries(${name} PRIVATE fmt::fmt)
