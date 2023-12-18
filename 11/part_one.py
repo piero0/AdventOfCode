@@ -25,35 +25,20 @@ def expand(glx, s, sort_key):
             tmp += 1
             gaps.append((i, tmp))
     
-    print(f'gaps {sort_key} {gaps}')
-
-    si = 0
-    gi = 0
-
+    # print(f'gaps {sort_key} {gaps}')
     key = sort_key
+    # print(f'key {key}')
 
-    while True:
-        if gi >= len(glx):
-            break
+    import copy
 
-        g = glx[gi]
-        s = gaps[si]
-
-        if g[key] < s[0]:
-            gi+=1
-            continue
-
-        # more spaces
-        if si+1 < len(gaps):
-            nexts = gaps[si+1]
-            if g[key] < nexts[key]:
-                g[key] += s[1]
-                gi+=1
-            else:
-                si+=1
-        else: #last space
-            g[key] += s[1]
-            gi+=1
+    for i in range(len(glx)):
+        p = glx[i][key]
+        prev = copy.copy(glx[i])
+        for gap in gaps:
+            g = gap[0]
+            if p > g:
+                glx[i][key] += 1000000-1
+        # print(f'{i}.{key} {prev} -> {glx[i]}')
 
     return glx
 
@@ -65,26 +50,24 @@ def get_distance(glx):
     total = 0
     n = 0
     for i in range(size):
-        for j in range(i+1, size):
+        for j in range(i, size):
             dst = dist(glx[i], glx[j])
-            print(f'{i}x{j}={dst} {glx[i]} {glx[j]}')
+            # print(f'{i}x{j}={dst} {glx[i]} {glx[j]}')
             total += dst
             n+=1
 
-    print(f'{size} {n} {(size*size-size)/2}')
+    # print(f'{size} {n} {(size*size-size)/2}')
     return total
 
+import sys
+
 def main():
-    with open('input.txt') as f:
+    with open(sys.argv[1]) as f:
         data = f.readlines()
     g, r, c = parse_galaxy(data)
-    g.sort(key=lambda x: x[0])
-    print(f'{r}\n{c}\n{g}\n')
+    # print(f'{r}\n{c}\n{g}\n')
     exp = expand(g, c, 0)
-    print(exp)
-    exp = expand(exp, r, 1)
-    print(exp)
-    print(get_distance(exp))
+    exp2 = expand(exp, r, 1)
+    print(get_distance(exp2))
 
 main()
-# 9285282 too low
