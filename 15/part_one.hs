@@ -1,6 +1,5 @@
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
-import Debug.Trace
 
 type Pair = (Int, Int)
 
@@ -27,24 +26,24 @@ isWall pos wh = S.member pos (walls wh)
 isBox pos wh = S.member pos (boxes wh)
 
 processBox dir orgpos newpos wh
-  | isWall nextpos wh = trace "2nd wall" wh
-  | isBox nextpos wh = trace "2nd box" (processBox dir orgpos nextpos wh)
-  | otherwise = trace "2nd swap" swapBox
+  | isWall nextpos wh = wh
+  | isBox nextpos wh = processBox dir orgpos nextpos wh
+  | otherwise = swapBox
   where
     nextpos = moveBox dir newpos
     swapBox = wh {robot = orgpos, boxes = S.delete orgpos (S.insert nextpos (boxes wh))}
 
 checkDest newpos pos dir wh
-  | isWall newpos wh = trace "wall" wh
-  | isBox newpos wh = trace ("box" ++ show wh) (processBox dir newpos newpos wh)
-  | otherwise = trace "empty" (updatePos newpos)
+  | isWall newpos wh = wh
+  | isBox newpos wh = processBox dir newpos newpos wh
+  | otherwise = updatePos newpos
   where
     updatePos newpos = wh {robot = newpos}
 
 makeAStep wh dir =
   let pos = robot wh
       newpos = moveBox dir pos
-   in trace ("pos is " ++ show pos ++ " dir is" ++ [dir] ++ " new pos" ++ show newpos) (checkDest newpos pos dir wh)
+   in checkDest newpos pos dir wh
 
 calcScore wh = sum $ map (\(x, y) -> x + 100 * y) $ S.toList (boxes wh)
 
@@ -56,8 +55,6 @@ main = do
   let moves = concat $ drop (length warehouse + 1) lns
 
   let wh = parseWarehouse warehouse (WH (0, 0) S.empty S.empty)
-  print moves
   let r = foldl makeAStep wh moves
-  print (boxes wh)
   let score = calcScore r
   print score
