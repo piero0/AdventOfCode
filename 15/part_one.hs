@@ -28,7 +28,7 @@ isBox pos wh = S.member pos (boxes wh)
 
 processBox dir orgpos newpos wh
   | isWall nextpos wh = trace "2nd wall" wh
-  | isBox nextpos wh = trace "2nd box" (processBox dir newpos nextpos wh)
+  | isBox nextpos wh = trace "2nd box" (processBox dir orgpos nextpos wh)
   | otherwise = trace "2nd swap" swapBox
   where
     nextpos = moveBox dir newpos
@@ -49,7 +49,7 @@ makeAStep wh dir =
 calcScore wh = sum $ map (\(x, y) -> x + 100 * y) $ S.toList (boxes wh)
 
 main = do
-  txt <- readFile "../data/2024/15/test_input"
+  txt <- readFile "../data/2024/15/input"
 
   let lns = lines txt
   let warehouse = takeWhile (/= []) lns
