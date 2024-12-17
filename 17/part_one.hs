@@ -2,6 +2,8 @@ import Data.Array (array, (!))
 import Data.Bits (xor)
 import Data.Char (isDigit)
 
+-- import Debug.Trace (trace)
+
 data VM = VM {ip :: Int, ar :: Int, br :: Int, cr :: Int, outp :: [Int], code :: [Int]} deriving (Show)
 
 initVm ini vm =
@@ -32,7 +34,7 @@ bxl x vm = vm {br = br vm `xor` x}
 
 bst x vm = vm {br = cop x vm `mod` 8}
 
-jnz x vm = if ar vm == 0 then vm {ip = x} else vm
+jnz x vm = if ar vm == 0 then vm else vm {ip = x}
 
 bxc _ vm = vm {br = br vm `xor` cr vm}
 
@@ -44,14 +46,21 @@ cdv x vm = vm {cr = dv x vm}
 
 -- runtime :)
 
-exec (ins, op) vm insAr = (insAr ! ins) op vm
+exec (ins, op) vm insAr = (insAr ! ins) op vm {ip = ip vm + 2}
 
-runVm vm = vm
+runCmd [] vm _ = vm {ip = -1}
+runCmd [a, b] vm insAr = exec (a, b) vm insAr
+
+-- runVm insAr vm = trace ("cmd " ++ show nextCmd ++ " ip " ++ show (ip vm) ++ "\n" ++ show vm) (runCmd nextCmd vm insAr)
+runVm insAr vm = runCmd nextCmd vm insAr
+  where
+    nextCmd = take 2 $ drop (ip vm) (code vm)
 
 main = do
-  txt <- readFile "../data/2024/17/test_input"
+  -- txt <- readFile "../data/2024/17/test_input"
+  txt <- readFile "../data/2024/17/input"
   let ini = map (dropWhile (not . isDigit)) $ lines txt
   let vm = initVm ini VM
   let insAr = array (0, 7) [(0, adv), (1, bxl), (2, bst), (3, jnz), (4, bxc), (5, out), (6, bdv), (7, cdv)]
-  let r = outp $ until (\vm -> ip vm == 0) runVm vm
+  let r = outp $ until (\vm -> ip vm < 0) (runVm insAr) vm
   print r
