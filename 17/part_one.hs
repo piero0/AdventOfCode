@@ -57,7 +57,7 @@ runVm vm = runCmd nextCmd vm
     nextCmd = take 2 $ drop (ip vm) (code vm)
 
 main = do
-  -- txt <- readFile "../data/2024/17/test_input"
+  -- txt <- readFile "../data/2024/17/test_input2"
   txt <- readFile "../data/2024/17/input"
   let ini = map (dropWhile (not . isDigit)) $ lines txt
   let insAr = array (0, 7) [(0, adv), (1, bxl), (2, bst), (3, jnz), (4, bxc), (5, out), (6, bdv), (7, cdv)]
