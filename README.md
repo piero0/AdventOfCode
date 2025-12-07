@@ -1,2 +1,2 @@
-# AdventOfCode
-Pick a branch to see solutions
+# AdventOfCode 2025
+Again Haskell madness :)
